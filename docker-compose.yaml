@@ -1,0 +1,10 @@
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: demo-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app

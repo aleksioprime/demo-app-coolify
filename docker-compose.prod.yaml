@@ -1,0 +1,37 @@
+x-app: &app
+  env_file:
+    - .env
+  restart: unless-stopped
+
+services:
+  app:
+    image: ghcr.io/aleksioprime/demo-app-coolify:latest
+    container_name: demo-app
+    <<: *app
+
+    labels:
+      # Обязательно включить Traefik
+      - "traefik.enable=true"
+
+      # --- HTTPS router ---
+      - "traefik.http.routers.demo.rule=Host(`demo.technocrew.ru`)"
+      - "traefik.http.routers.demo.entrypoints=websecure"
+      - "traefik.http.routers.demo.tls.certresolver=myresolver"
+
+      # --- HTTP router (redirect to HTTPS) ---
+      - "traefik.http.routers.demo-http.rule=Host(`demo.technocrew.ru`)"
+      - "traefik.http.routers.demo-http.entrypoints=web"
+      - "traefik.http.routers.demo-http.middlewares=redirect-to-https"
+
+      # --- Redirect middleware ---
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+      # --- INTERNAL PORT ---
+      - "traefik.http.services.demo.loadbalancer.server.port=8000"
+
+    networks:
+      - traefik-net
+
+networks:
+  traefik-net:
+    external: true

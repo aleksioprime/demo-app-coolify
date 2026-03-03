@@ -1,0 +1,59 @@
+name: Build & Deploy (Compose via Coolify)
+
+# Запуск при пуше в main
+on:
+  push:
+    branches:
+      - main
+
+# Права для GitHub Actions:
+# - contents:read — чтобы читать репозиторий
+# - packages:write — чтобы пушить Docker-образы в GHCR
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-deploy:
+    name: Build image -> Push to GHCR -> Trigger Coolify
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Забираем исходники репозитория
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2) Включаем Buildx (нужен для кэша и более надёжных сборок)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3) Логин в GitHub Container Registry (ghcr.io)
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      # 4) Сборка и пуш образа в GHCR
+      # Dockerfile находится в папке app
+      # tags:
+      # - latest (удобно для compose)
+      # - sha (удобно для отката/точной версии)
+      - name: Build and push Docker image (app/Dockerfile)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          # Кэш сборки ускоряет последующие билды
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 5) Триггер деплоя в Coolify
+      # Coolify подтянет свежий образ (latest) и сделает redeploy compose-стека
+      - name: Trigger Coolify deploy webhook
+        run: curl -fsS -X POST "${{ secrets.COOLIFY_WEBHOOK }}"
