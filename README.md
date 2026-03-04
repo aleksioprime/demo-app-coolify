@@ -41,7 +41,23 @@ echo <PAT_пользователя> | docker login ghcr.io -u <имя_польз
 
 Передайте `имя_пользователя` и `PAT_пользователя` администратору сервера для настройки автодеплоя проекта вашего репозитория
 
+Перейдите в root:
+```sh
+sudo -i
+```
+
+Выполните docker login:
+```sh
+echo "ВАШ_GHCR_TOKEN" | docker login ghcr.io -u aleksioprime --password-stdin
+```
+
+Проверьте добавление токена:
+```sh
+cat /root/.docker/config.json
+```
 
 В GitHub репозитории создайте переменные:
 - COOLIFY_WEBHOOK - ссылка на Webhook
 - COOLIFY_TOKEN - API токен Coolify
+
+Включите в проекте Coolify настройку `Raw Compose Deployment`, чтобы работали настройки указанного Docker-Compose (в том числе Traefik)

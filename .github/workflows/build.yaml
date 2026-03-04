@@ -6,9 +6,9 @@ on:
     branches:
       - main
 
-# Права для GitHub Actions:
-# - contents:read — чтобы читать репозиторий
-# - packages:write — чтобы пушить Docker-образы в GHCR
+# Права для GitHub Actions
+# contents:read — читать код
+# packages:write — пушить Docker-образы в GHCR
 permissions:
   contents: read
   packages: write
@@ -19,15 +19,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Забираем исходники репозитория
+      # Вычисляем имя контейнера и сохраняем в переменные среды
+      # PACKAGE_NAME — имя пакета в GHCR (должно быть lowercase)
+      # IMAGE_NAME — полный путь к Docker образу
+      - name: Set package/image names
+        run: |
+          pkg=$(echo '${{ github.repository }}' | tr 'A-Z' 'a-z')
+          echo "PACKAGE_NAME=$pkg" >> $GITHUB_ENV
+          echo "IMAGE_NAME=ghcr.io/$pkg" >> $GITHUB_ENV
+
+      # Получаем исходники репозитория
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2) Включаем Buildx (нужен для кэша и более надёжных сборок)
+      # Включаем Docker Buildx
+      # (нужен для кэша и современных билдов Docker)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 3) Логин в GitHub Container Registry (ghcr.io)
+      # Логин в GitHub Container Registry
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -35,50 +45,58 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-      # 4) Сборка и пуш образа в GHCR
-      # Dockerfile находится в папке app
-      # tags:
-      # - latest (удобно для compose)
-      # - sha (удобно для отката/точной версии)
-      - name: Build and push Docker image (app/Dockerfile)
+      # Сборка Docker образа и публикация в GHCR
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: ./app
           file: ./app/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
-          # Кэш сборки ускоряет последующие билды
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 5) Триггер деплоя в Coolify (через API)
-      # Ошибка триггера НЕ должна ломать сборку
+      # Сделать контейнер публичным (если он private)
+      - name: Ensure GHCR package is public
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          echo "Checking package visibility..."
+
+          visibility=$(curl -s \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user/packages/container/${{ env.PACKAGE_NAME }} \
+            | jq -r '.visibility')
+
+          echo "Current visibility: $visibility"
+
+          if [ "$visibility" = "private" ]; then
+            echo "Making package public..."
+
+            curl -sS -X PATCH \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/user/packages/container/${{ env.PACKAGE_NAME }}/visibility \
+              -d '{"visibility":"public"}'
+
+            echo "Package is now public."
+          else
+            echo "Package already public. Skipping."
+          fi
+
+      # Триггер деплоя в Coolify через webhook
       - name: Trigger Coolify deploy
         continue-on-error: true
         env:
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
-          set +e
-
           echo "Triggering Coolify deploy..."
 
-          http_code=$(curl -sS -o coolify_response.json -w "%{http_code}" \
-            -X POST "$COOLIFY_WEBHOOK" \
-            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-            --connect-timeout 10 \
-            --max-time 30)
-
-          echo "Coolify HTTP status: $http_code"
-          echo "Response:"
-          cat coolify_response.json || true
-          echo
-
-          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
-            echo "::warning::Coolify deploy trigger failed (HTTP $http_code). Build will continue."
-          fi
-
-          # Никогда не падаем
-          exit 0
+          curl -sS -X POST "$COOLIFY_WEBHOOK" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN" \
+          || echo "::warning::Coolify deploy trigger failed"
