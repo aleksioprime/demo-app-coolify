@@ -59,5 +59,7 @@ cat /root/.docker/config.json
 В GitHub репозитории создайте переменные:
 - COOLIFY_WEBHOOK - ссылка на Webhook
 - COOLIFY_TOKEN - API токен Coolify
+- COOLIFY_API - https://coolify.technocrew.ru/api/v1
+- COOLIFY_APP - ac8o4gs40s80sks404soowwo
 
 Включите в проекте Coolify настройку `Raw Compose Deployment`, чтобы работали настройки указанного Docker-Compose (в том числе Traefik)

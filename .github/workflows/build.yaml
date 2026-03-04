@@ -58,45 +58,33 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Сделать контейнер публичным (если он private)
-      - name: Ensure GHCR package is public
+      # Обновляем IMAGE_TAG в Coolify на текущий commit SHA
+      - name: Set IMAGE_TAG in Coolify
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          COOLIFY_API: ${{ secrets.COOLIFY_API }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_APP: ${{ secrets.COOLIFY_APP }}
         run: |
-          echo "Checking package visibility..."
-
-          visibility=$(curl -s \
-            -H "Authorization: Bearer $GH_TOKEN" \
+          curl -sS -X PATCH \
+            -H "Authorization: Bearer $COOLIFY_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/user/packages/container/${{ env.PACKAGE_NAME }} \
-            | jq -r '.visibility')
-
-          echo "Current visibility: $visibility"
-
-          if [ "$visibility" = "private" ]; then
-            echo "Making package public..."
-
-            curl -sS -X PATCH \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/user/packages/container/${{ env.PACKAGE_NAME }}/visibility \
-              -d '{"visibility":"public"}'
-
-            echo "Package is now public."
-          else
-            echo "Package already public. Skipping."
-          fi
+            -H "Content-Type: application/json" \
+            "$COOLIFY_API/applications/$COOLIFY_APP/envs/bulk" \
+            -d "{\"data\":[{\"key\":\"IMAGE_TAG\",\"value\":\"${{ github.sha }}\"}]}" \
+          || echo "::warning::Coolify IMAGE_TAG update failed"
 
       # Триггер деплоя в Coolify через webhook
       - name: Trigger Coolify deploy
         continue-on-error: true
         env:
-          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+          COOLIFY_API: ${{ secrets.COOLIFY_API }}
+          COOLIFY_APP: ${{ secrets.COOLIFY_APP }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
           echo "Triggering Coolify deploy..."
 
-          curl -sS -X POST "$COOLIFY_WEBHOOK" \
+          curl -sS -X POST \
+            "$COOLIFY_API/deploy?uuid=$COOLIFY_APP&force=true" \
             -H "Authorization: Bearer $COOLIFY_TOKEN" \
           || echo "::warning::Coolify deploy trigger failed"

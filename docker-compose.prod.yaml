@@ -3,7 +3,7 @@ x-app: &app
 
 services:
   app:
-    image: ghcr.io/aleksioprime/demo-app-coolify
+    image: ghcr.io/aleksioprime/demo-app-coolify:${IMAGE_TAG}
     container_name: demo-app
     <<: *app
 
