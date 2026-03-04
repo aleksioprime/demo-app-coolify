@@ -53,7 +53,32 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 5) Триггер деплоя в Coolify
-      # Coolify подтянет свежий образ (latest) и сделает redeploy compose-стека
-      - name: Trigger Coolify deploy webhook
-        run: curl -fsS -X POST "${{ secrets.COOLIFY_WEBHOOK }}"
+      # 5) Триггер деплоя в Coolify (через API)
+      # Ошибка триггера НЕ должна ломать сборку
+      - name: Trigger Coolify deploy
+        continue-on-error: true
+        env:
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: |
+          set +e
+
+          echo "Triggering Coolify deploy..."
+
+          http_code=$(curl -sS -o coolify_response.json -w "%{http_code}" \
+            -X POST "$COOLIFY_WEBHOOK" \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            --connect-timeout 10 \
+            --max-time 30)
+
+          echo "Coolify HTTP status: $http_code"
+          echo "Response:"
+          cat coolify_response.json || true
+          echo
+
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "::warning::Coolify deploy trigger failed (HTTP $http_code). Build will continue."
+          fi
+
+          # Никогда не падаем
+          exit 0

@@ -4,64 +4,6 @@
 
 Сделайте Fork текущего репозитория в свой GitHub и создайте `GHCR_TOKEN` в переменных окружения (информация ниже)
 
-## Ручная настройка репозитория
-
-Войдите в свою учётную запись GitHub и создайте ветку `production` в своём репозитории. Для этого в выпадаюшем списке с веткой `main` выберите *View all branches*. Создайте ветку с помощью кнопки *New Branch* и назовите `production`.
-
-Вариант создания ветки `production` в терминале:
-```sh
-git checkout -b production
-git push origin production
-```
-
-Очистите ветку `production` локально:
-```sh
-git fetch origin
-git checkout production
-git rm -r .
-```
-
-Создайте docker-compose для production:
-```sh
-touch docker-compose.prod.yaml
-```
-
-Выполните commit и push:
-```sh
-git add .
-git commit -m "Clean production branch"
-git push origin production --force
-```
-
-Сделайте Reset истории production:
-```sh
-git checkout production
-git reset --hard HEAD~0
-```
-
-Защитите ветку `production`, чтобы предовтратить случайные push:
-- Protect matching branch: production
-- Require status checks
-- Allow GitHub Actions to push
-
-Очистить историю коммитов ветки `main`:
-```sh
-git checkout main
-git checkout --orphan clean-main
-git add -A
-git commit -m "Initial commit"
-git push -f origin clean-main:main
-```
-
-Очистить историю коммитов ветки `production`:
-```sh
-git checkout production
-git checkout --orphan clean-production
-git add -A
-git commit -m "Initial commit"
-git push -f origin clean-production:production
-```
-
 ## Запуск сервиса локально
 
 Запустите сервис локально:
@@ -98,3 +40,8 @@ echo <PAT_пользователя> | docker login ghcr.io -u <имя_польз
 ### Развёртывание приложения репозитория
 
 Передайте `имя_пользователя` и `PAT_пользователя` администратору сервера для настройки автодеплоя проекта вашего репозитория
+
+
+В GitHub репозитории создайте переменные:
+- COOLIFY_WEBHOOK - ссылка на Webhook
+- COOLIFY_TOKEN - API токен Coolify
