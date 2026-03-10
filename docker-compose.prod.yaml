@@ -4,4 +4,7 @@ x-app:
 services:
   app:
     image: ghcr.io/aleksioprime/demo-app-coolify:${IMAGE_TAG}
-    restart: unless-stopped
+    <<: *app
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.app.loadbalancer.server.port=8000
