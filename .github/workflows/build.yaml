@@ -82,7 +82,7 @@ jobs:
           COOLIFY_APP: ${{ secrets.COOLIFY_APP }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
-          echo "Triggering Coolify deploy..."
+          echo "Triggering Coolify deploy... ($COOLIFY_API/deploy?uuid=$COOLIFY_APP&force=true)"
 
           curl -sS -X POST \
             "$COOLIFY_API/deploy?uuid=$COOLIFY_APP&force=true" \
