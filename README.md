@@ -57,7 +57,7 @@ API Token необходим для отправки авторизирован�
 
 Перейдите на вкладке `Configuration` в меню `Webhooks` и скопируйте два фрагмента строки `Deploy Webhook` (например, `https://coolify.technocrew.ru/api/v1/deploy?uuid=ygw8skswo448gs440skwcssw&force=false`): основной домен (например, `https://coolify.technocrew.ru`) и UUID приложения (например, `ygw8skswo448gs440skwcssw`)
 
-В своём репозитории проекта перейдите в `Settings -> Secrets & Variables -> Actions` и добавьте переменные. В переменную с названием `COOLIFY_API` вставьте основной домен (например, `https://coolify.technocrew.ru`),  а в переменную `COOLIFY_APP` вставьте UUID приложения (например, `ygw8skswo448gs440skwcssw`)
+В своём репозитории проекта перейдите в `Settings -> Secrets & Variables -> Actions` и добавьте переменные. В переменную с названием `COOLIFY_API` вставьте основной домен (например, `https://coolify.technocrew.ru/api/v1`),  а в переменную `COOLIFY_APP` вставьте UUID приложения (например, `ygw8skswo448gs440skwcssw`)
 
 ## Настройка репозитория
 

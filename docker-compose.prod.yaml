@@ -1,4 +1,7 @@
+x-app: &app
+  restart: unless-stopped
+
 services:
   app:
     image: ghcr.io/aleksioprime/demo-app-coolify:${IMAGE_TAG}
-    restart: unless-stopped
+    <<: *app
