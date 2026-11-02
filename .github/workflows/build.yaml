@@ -1,14 +1,13 @@
-name: Build & Deploy (Compose via Coolify)
+name: Build & Deploy
 
-# Запуск при пуше в main
+# Сборка при пуше в main и вручную во вкладке Actions
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
-# Права для GitHub Actions
-# contents:read — читать код
-# packages:write — пушить Docker-образы в GHCR
+# contents: read — читать код; packages: write — публиковать образ в GHCR
 permissions:
   contents: read
   packages: write
@@ -19,33 +18,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Вычисляем имя контейнера и сохраняем в переменные среды
-      # PACKAGE_NAME — имя пакета в GHCR (должно быть lowercase)
-      # IMAGE_NAME — полный путь к Docker образу
-      - name: Set package/image names
-        run: |
-          pkg=$(echo '${{ github.repository }}' | tr 'A-Z' 'a-z')
-          echo "PACKAGE_NAME=$pkg" >> $GITHUB_ENV
-          echo "IMAGE_NAME=ghcr.io/$pkg" >> $GITHUB_ENV
+      # Имя образа = ghcr.io/<владелец>/<репозиторий> строчными буквами
+      - name: Set image name
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr 'A-Z' 'a-z')" >> "$GITHUB_ENV"
 
-      # Получаем исходники репозитория
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Включаем Docker Buildx
-      # (нужен для кэша и современных билдов Docker)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Логин в GitHub Container Registry
+      # Встроенный токен GitHub Actions: отдельный личный токен не нужен
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Сборка Docker образа и публикация в GHCR
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -58,33 +48,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Обновляем IMAGE_TAG в Coolify на текущий commit SHA
-      - name: Set IMAGE_TAG in Coolify
-        continue-on-error: true
-        env:
-          COOLIFY_API: ${{ secrets.COOLIFY_API }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-          COOLIFY_APP: ${{ secrets.COOLIFY_APP }}
-        run: |
-          curl -sS -X PATCH \
-            -H "Authorization: Bearer $COOLIFY_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "Content-Type: application/json" \
-            "$COOLIFY_API/applications/$COOLIFY_APP/envs/bulk" \
-            -d "{\"data\":[{\"key\":\"IMAGE_TAG\",\"value\":\"${{ github.sha }}\"}]}" \
-          || echo "::warning::Coolify IMAGE_TAG update failed"
-
-      # Триггер деплоя в Coolify через webhook
+      # Деплой: Coolify скачивает свежий :latest. Токену достаточно права deploy.
+      # Пока секреты Coolify не заданы (новый репозиторий из шаблона), шаг пропускается.
       - name: Trigger Coolify deploy
-        continue-on-error: true
         env:
           COOLIFY_API: ${{ secrets.COOLIFY_API }}
           COOLIFY_APP: ${{ secrets.COOLIFY_APP }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
-          echo "Triggering Coolify deploy... ($COOLIFY_API/deploy?uuid=$COOLIFY_APP&force=true)"
-
-          curl -sS -X POST \
-            "$COOLIFY_API/deploy?uuid=$COOLIFY_APP&force=true" \
-            -H "Authorization: Bearer $COOLIFY_TOKEN" \
-          || echo "::warning::Coolify deploy trigger failed"
+          if [ -z "$COOLIFY_API" ] || [ -z "$COOLIFY_APP" ] || [ -z "$COOLIFY_TOKEN" ]; then
+            echo "::notice::Секреты COOLIFY_API, COOLIFY_APP, COOLIFY_TOKEN не заданы - деплой пропущен"
+            exit 0
+          fi
+          curl -fsS -X POST "$COOLIFY_API/deploy?uuid=$COOLIFY_APP&force=false" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN"
