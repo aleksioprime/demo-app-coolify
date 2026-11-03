@@ -10,7 +10,7 @@
 ## Как это устроено
 
 ```
-push в main ──► GitHub Actions ──► образ ghcr.io/<владелец>/<репозиторий>:latest
+push в main ──► GitHub Actions ──► образ ghcr.io/<владелец>/<репозиторий>-app:latest
                       │
                       └──► Coolify (devops.skolhub.ru): «задеплой приложение <UUID>»
                                    │
@@ -39,15 +39,15 @@ docker compose up -d --build
 ### 1. Репозиторий
 
 1. На странице этого репозитория нажмите **Use this template → Create a new repository**.
-2. В `docker-compose.prod.yaml` замените `aleksioprime/demo-app-coolify` в адресе образа
-   на `<ваш-логин>/<ваш-репозиторий>` (строчными буквами).
+2. В `docker-compose.prod.yaml` замените `aleksioprime/demo-app-coolify-app` в адресе образа
+   на `<ваш-логин>/<ваш-репозиторий>-app` (строчными буквами).
 3. Отправьте изменения в `main`. Workflow соберёт образ и опубликует его в GHCR;
    шаг деплоя пропустится, пока не заданы секреты Coolify — это нормально.
 
 ### 2. Сделать образ публичным
 
 Сервер скачивает образ без пароля, поэтому пакет должен быть публичным:
-GitHub → ваш профиль → **Packages** → пакет с именем репозитория → **Package settings**
+GitHub → ваш профиль → **Packages** → пакет `<репозиторий>-app` → **Package settings**
 → **Danger Zone** → **Change visibility** → **Public**.
 
 ### 3. Попросить администратора создать приложение

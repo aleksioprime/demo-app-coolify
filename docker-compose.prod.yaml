@@ -1,10 +1,10 @@
 # Запуск на сервере из готового образа. Этот файл читает Coolify.
-# Замените aleksioprime/demo-app-coolify на <ваш-логин>/<ваш-репозиторий> строчными буквами.
+# Замените aleksioprime/demo-app-coolify-app на <ваш-логин>/<ваш-репозиторий>-app строчными буквами.
 # Домен задаёт администратор в Coolify: https://<имя>.technocrew.ru:8000
 
 services:
   app:
-    image: ghcr.io/aleksioprime/demo-app-coolify:latest
+    image: ghcr.io/aleksioprime/demo-app-coolify-app:latest
     # Каждый деплой скачивает свежий :latest, собранный GitHub Actions
     pull_policy: always
     restart: unless-stopped
