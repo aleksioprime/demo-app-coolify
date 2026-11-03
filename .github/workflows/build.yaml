@@ -18,9 +18,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Имя образа = ghcr.io/<владелец>/<репозиторий> строчными буквами
+      # Имя образа = ghcr.io/<владелец>/<репозиторий>-app строчными буквами, как у остальных проектов
+      # (<репозиторий>-backend, -frontend). Пакет создаёт первый запуск workflow, поэтому он сразу привязан
+      # к репозиторию и встроенному токену хватает прав на публикацию.
       - name: Set image name
-        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr 'A-Z' 'a-z')" >> "$GITHUB_ENV"
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr 'A-Z' 'a-z')-app" >> "$GITHUB_ENV"
 
       - name: Checkout repository
         uses: actions/checkout@v4
